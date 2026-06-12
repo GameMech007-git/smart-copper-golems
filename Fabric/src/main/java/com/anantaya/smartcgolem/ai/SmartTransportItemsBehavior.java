@@ -1,6 +1,7 @@
 package com.anantaya.smartcgolem.ai;
 
 import com.google.common.collect.ImmutableMap;
+import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ColorParticleOption;
 import net.minecraft.server.level.ServerLevel;
@@ -256,7 +257,8 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
 
         switch (taskState) {
 
-            case IDLE -> searchForTarget(level, mob, gameTime);
+            case IDLE ->
+                searchForTarget(level, mob, gameTime);
 
             case WALK_TO_SOURCE -> {
                 walkToTarget(mob, gameTime);
@@ -1107,8 +1109,8 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
 
         for (ItemFrame frame : level.getEntitiesOfClass(ItemFrame.class, box)) {
 
-            BlockPos attachedPos =
-                    frame.blockPosition().relative(frame.getDirection().getOpposite());
+            BlockPos attachedPos
+                    = frame.blockPosition().relative(frame.getDirection().getOpposite());
 
             if (!attachedPos.equals(chestPos)) {
 

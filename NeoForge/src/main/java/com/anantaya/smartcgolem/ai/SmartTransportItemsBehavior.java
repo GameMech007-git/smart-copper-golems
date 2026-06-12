@@ -1,6 +1,7 @@
 package com.anantaya.smartcgolem.ai;
 
 import com.google.common.collect.ImmutableMap;
+import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -88,31 +89,31 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
     }
 
     @Override
-protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
+    protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
 
-    boolean carrying = !mob.getMainHandItem().isEmpty();
+        boolean carrying = !mob.getMainHandItem().isEmpty();
 
-    currentTarget = null;
-    currentWalkTarget = null;
-    openedContainer = null;
-    openedCopperGolem = null;
-    actionDone = false;
-    ticksAtTarget = 0;
-    taskState = TaskState.IDLE;
-    unlockChest();
+        currentTarget = null;
+        currentWalkTarget = null;
+        openedContainer = null;
+        openedCopperGolem = null;
+        actionDone = false;
+        ticksAtTarget = 0;
+        taskState = TaskState.IDLE;
+        unlockChest();
 
-    // IMPORTANT:
-    // Do NOT clear source memory if golem is already carrying an item.
-    // Behavior can restart between pickup and deposit.
-    if (!carrying) {
-        lastPickupChest = null;
-        returnToSourceChest = null;
+        // IMPORTANT:
+        // Do NOT clear source memory if golem is already carrying an item.
+        // Behavior can restart between pickup and deposit.
+        if (!carrying) {
+            lastPickupChest = null;
+            returnToSourceChest = null;
+        }
+
+        System.out.println("[SMART-GOLEM START] carrying=" + carrying
+                + " returnToSourceChest=" + returnToSourceChest
+                + " lastPickupChest=" + lastPickupChest);
     }
-
-    System.out.println("[SMART-GOLEM START] carrying=" + carrying
-            + " returnToSourceChest=" + returnToSourceChest
-            + " lastPickupChest=" + lastPickupChest);
-}
 
     @Override
     protected boolean canStillUse(ServerLevel level, PathfinderMob mob, long gameTime) {
@@ -167,47 +168,48 @@ protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
 
     private void switchState(PathfinderMob mob, TaskState newState, BlockPos target) {
 
-    if (needsChestLock(newState)) {
-        if (!tryLockChest(target)) {
-            System.out.println("[SMART-GOLEM CHEST-LOCK-FAILED] target busy=" + target);
+        if (needsChestLock(newState)) {
+            if (!tryLockChest(target)) {
+                System.out.println("[SMART-GOLEM CHEST-LOCK-FAILED] target busy=" + target);
 
-            if (newState == TaskState.INTERACT_SOURCE) {
-                this.taskState = TaskState.WAIT_FOR_SOURCE;
-            } else if (newState == TaskState.INTERACT_DESTINATION) {
-                this.taskState = TaskState.WAIT_FOR_DESTINATION;
-            } else {
-                this.taskState = TaskState.IDLE;
+                if (newState == TaskState.INTERACT_SOURCE) {
+                    this.taskState = TaskState.WAIT_FOR_SOURCE;
+                } else if (newState == TaskState.INTERACT_DESTINATION) {
+                    this.taskState = TaskState.WAIT_FOR_DESTINATION;
+                } else {
+                    this.taskState = TaskState.IDLE;
+                }
+
+                this.currentTarget = target;
+                this.currentWalkTarget = target == null ? null : findBestWalkTargetForChest(mob, target);
+
+                this.ticksAtTarget = 0;
+                this.actionDone = false;
+                return;
             }
-
-            this.currentTarget = target;
-            this.currentWalkTarget = target == null ? null : findBestWalkTargetForChest(mob, target);
-
-            this.ticksAtTarget = 0;
-            this.actionDone = false;
-            return;
+        } else {
+            unlockChest();
         }
-    } else {
-        unlockChest();
+
+        this.taskState = newState;
+        this.currentTarget = target;
+        this.currentWalkTarget = target == null ? null : findBestWalkTargetForChest(mob, target);
+
+        this.ticksAtTarget = 0;
+        this.actionDone = false;
+
+        System.out.println("[SMART-GOLEM STATE] -> " + newState
+                + " chestTarget=" + target
+                + " walkTarget=" + currentWalkTarget);
     }
-
-    this.taskState = newState;
-    this.currentTarget = target;
-    this.currentWalkTarget = target == null ? null : findBestWalkTargetForChest(mob, target);
-
-    this.ticksAtTarget = 0;
-    this.actionDone = false;
-
-    System.out.println("[SMART-GOLEM STATE] -> " + newState
-            + " chestTarget=" + target
-            + " walkTarget=" + currentWalkTarget);
-}
 
     @Override
     protected void tick(ServerLevel level, PathfinderMob mob, long gameTime) {
 
         switch (taskState) {
 
-            case IDLE -> searchForTarget(level, mob, gameTime);
+            case IDLE ->
+                searchForTarget(level, mob, gameTime);
 
             case WALK_TO_SOURCE -> {
                 walkToTarget(mob);
@@ -237,7 +239,8 @@ protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
                 }
             }
 
-            case INTERACT_SOURCE -> interactWithSource(level, mob);
+            case INTERACT_SOURCE ->
+                interactWithSource(level, mob);
 
             case WALK_TO_DESTINATION -> {
                 walkToTarget(mob);
@@ -267,7 +270,8 @@ protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
                 }
             }
 
-            case INTERACT_DESTINATION -> interactWithDestination(level, mob);
+            case INTERACT_DESTINATION ->
+                interactWithDestination(level, mob);
 
             case RETURN_TO_SOURCE -> {
                 walkToTarget(mob);
@@ -285,10 +289,10 @@ protected void start(ServerLevel level, PathfinderMob mob, long gameTime) {
                     lastPickupChest = null;
 
                     taskState = TaskState.IDLE;
-currentTarget = null;
-currentWalkTarget = null;
-ticksAtTarget = 0;
-actionDone = false;
+                    currentTarget = null;
+                    currentWalkTarget = null;
+                    ticksAtTarget = 0;
+                    actionDone = false;
                 }
             }
         }
@@ -296,82 +300,82 @@ actionDone = false;
 
     private void walkToTarget(PathfinderMob mob) {
 
-    if (currentWalkTarget == null) {
-        switchState(mob, TaskState.IDLE, null);
-        return;
+        if (currentWalkTarget == null) {
+            switchState(mob, TaskState.IDLE, null);
+            return;
+        }
+
+        BehaviorUtils.setWalkAndLookTargetMemories(
+                mob,
+                currentWalkTarget,
+                speedModifier,
+                0
+        );
     }
 
-    BehaviorUtils.setWalkAndLookTargetMemories(
-            mob,
-            currentWalkTarget,
-            speedModifier,
-            0
-    );
-}
-
     private boolean hasArrived(PathfinderMob mob) {
-    return currentWalkTarget != null
-            && mob.blockPosition().distSqr(currentWalkTarget)
-            <= ARRIVAL_DISTANCE_SQUARED;
-}
+        return currentWalkTarget != null
+                && mob.blockPosition().distSqr(currentWalkTarget)
+                <= ARRIVAL_DISTANCE_SQUARED;
+    }
 
     private double getPathCost(PathfinderMob mob, BlockPos chestPos) {
 
-    double bestCost = Double.MAX_VALUE;
+        double bestCost = Double.MAX_VALUE;
 
-    for (BlockPos nearby : BlockPos.betweenClosed(
-            chestPos.offset(-1, 0, -1),
-            chestPos.offset(1, 1, 1))) {
+        for (BlockPos nearby : BlockPos.betweenClosed(
+                chestPos.offset(-1, 0, -1),
+                chestPos.offset(1, 1, 1))) {
 
-        Path path = mob.getNavigation().createPath(nearby, 1);
+            Path path = mob.getNavigation().createPath(nearby, 1);
 
-        if (path == null || !path.canReach()) {
-            continue;
+            if (path == null || !path.canReach()) {
+                continue;
+            }
+
+            double cost = path.getNodeCount();
+
+            if (cost < bestCost) {
+                bestCost = cost;
+            }
         }
 
-        double cost = path.getNodeCount();
-
-        if (cost < bestCost) {
-            bestCost = cost;
+        if (bestCost == Double.MAX_VALUE) {
+            System.out.println("[SMART-GOLEM PATH-SKIP] Cannot path near " + chestPos);
         }
+
+        return bestCost;
     }
 
-    if (bestCost == Double.MAX_VALUE) {
-        System.out.println("[SMART-GOLEM PATH-SKIP] Cannot path near " + chestPos);
+    private BlockPos findBestWalkTargetForChest(PathfinderMob mob, BlockPos chestPos) {
+
+        BlockPos best = chestPos;
+        double bestCost = Double.MAX_VALUE;
+
+        for (BlockPos nearby : BlockPos.betweenClosed(
+                chestPos.offset(-1, 0, -1),
+                chestPos.offset(1, 1, 1))) {
+
+            Path path = mob.getNavigation().createPath(nearby, 1);
+
+            if (path == null || !path.canReach()) {
+                continue;
+            }
+
+            double cost = path.getNodeCount();
+
+            if (returnToSourceChest != null) {
+                cost += Math.abs(nearby.getY() - returnToSourceChest.getY()) * 200;
+            }
+
+            if (cost < bestCost) {
+                bestCost = cost;
+                best = nearby.immutable();
+            }
+        }
+
+        return best;
     }
-
-    return bestCost;
-}
-
-private BlockPos findBestWalkTargetForChest(PathfinderMob mob, BlockPos chestPos) {
-
-    BlockPos best = chestPos;
-    double bestCost = Double.MAX_VALUE;
-
-    for (BlockPos nearby : BlockPos.betweenClosed(
-            chestPos.offset(-1, 0, -1),
-            chestPos.offset(1, 1, 1))) {
-
-        Path path = mob.getNavigation().createPath(nearby, 1);
-
-        if (path == null || !path.canReach()) {
-            continue;
-        }
-
-        double cost = path.getNodeCount();
-
-        if (returnToSourceChest != null) {
-            cost += Math.abs(nearby.getY() - returnToSourceChest.getY()) * 200;
-        }
-
-        if (cost < bestCost) {
-            bestCost = cost;
-            best = nearby.immutable();
-        }
-    }
-
-    return best;
-}
 
     private void interactWithSource(ServerLevel level, PathfinderMob mob) {
 
@@ -534,23 +538,23 @@ private BlockPos findBestWalkTargetForChest(PathfinderMob mob, BlockPos chestPos
 
                 Container targetContainer = chest;
 
-if (level.getBlockState(currentTarget).getBlock() instanceof ChestBlock chestBlock) {
-    Container combined =
-            ChestBlock.getContainer(
-                    chestBlock,
-                    level.getBlockState(currentTarget),
-                    level,
-                    currentTarget,
-                    true
-            );
+                if (level.getBlockState(currentTarget).getBlock() instanceof ChestBlock chestBlock) {
+                    Container combined
+                            = ChestBlock.getContainer(
+                                    chestBlock,
+                                    level.getBlockState(currentTarget),
+                                    level,
+                                    currentTarget,
+                                    true
+                            );
 
-    if (combined != null) {
-        targetContainer = combined;
-    }
-}
+                    if (combined != null) {
+                        targetContainer = combined;
+                    }
+                }
 
-ItemStack remaining =
-        insertIntoChest(level, currentTarget, targetContainer, heldBefore);
+                ItemStack remaining
+                        = insertIntoChest(level, currentTarget, targetContainer, heldBefore);
 
                 mob.setItemInHand(InteractionHand.MAIN_HAND, remaining);
 
@@ -574,24 +578,24 @@ ItemStack remaining =
                 }
             }
 
-                        actionDone = true;
+            actionDone = true;
 
             closeOpenedContainer();
             unlockChest();
 
-            BlockPos sourceToReturn =
-                    returnToSourceChest != null
+            BlockPos sourceToReturn
+                    = returnToSourceChest != null
                             ? returnToSourceChest
                             : lastPickupChest;
 
             if (sourceToReturn != null) {
 
-    returnToSourceChest = sourceToReturn;
-    switchState(mob, TaskState.RETURN_TO_SOURCE, sourceToReturn);
+                returnToSourceChest = sourceToReturn;
+                switchState(mob, TaskState.RETURN_TO_SOURCE, sourceToReturn);
 
-    System.out.println("[SMART-GOLEM RETURN-TO-SOURCE] returning to=" + sourceToReturn);
+                System.out.println("[SMART-GOLEM RETURN-TO-SOURCE] returning to=" + sourceToReturn);
 
-} else {
+            } else {
 
                 System.out.println("[SMART-GOLEM RETURN-FAILED] No saved source chest.");
 
@@ -662,14 +666,14 @@ ItemStack remaining =
 
                     double pathCost = getPathCost(mob, pos);
 
-if (pathCost == Double.MAX_VALUE) {
-    continue;
-}
+                    if (pathCost == Double.MAX_VALUE) {
+                        continue;
+                    }
 
-if (pathCost < bestDist) {
-    bestDist = pathCost;
-    best = pos;
-}
+                    if (pathCost < bestDist) {
+                        bestDist = pathCost;
+                        best = pos;
+                    }
                 }
             }
         }
@@ -713,7 +717,7 @@ if (pathCost < bestDist) {
 
                     Container targetContainer = getActualContainer(level, pos, chest);
 
-if (!hasSpaceFor(targetContainer, held)) {
+                    if (!hasSpaceFor(targetContainer, held)) {
                         System.out.println("[SMART-GOLEM FULL-CHEST] Skipping matching chest because full: " + pos);
                         continue;
                     }
@@ -737,18 +741,18 @@ if (!hasSpaceFor(targetContainer, held)) {
 
                     double pathCost = getPathCost(mob, pos);
 
-if (pathCost == Double.MAX_VALUE) {
-    continue;
-}
+                    if (pathCost == Double.MAX_VALUE) {
+                        continue;
+                    }
 
-if (returnToSourceChest != null) {
-    pathCost += Math.abs(pos.getY() - returnToSourceChest.getY()) * 200;
-}
+                    if (returnToSourceChest != null) {
+                        pathCost += Math.abs(pos.getY() - returnToSourceChest.getY()) * 200;
+                    }
 
-if (pathCost < bestDist) {
-    bestDist = pathCost;
-    best = pos;
-}
+                    if (pathCost < bestDist) {
+                        bestDist = pathCost;
+                        best = pos;
+                    }
                 }
             }
         }
@@ -791,25 +795,25 @@ if (pathCost < bestDist) {
 
                     Container targetContainer = getActualContainer(level, pos, chest);
 
-if (!hasSpaceFor(targetContainer, held)) {
+                    if (!hasSpaceFor(targetContainer, held)) {
                         System.out.println("[SMART-GOLEM FULL-CHEST] Skipping fallback chest because full: " + pos);
                         continue;
                     }
 
                     double pathCost = getPathCost(mob, pos);
 
-if (pathCost == Double.MAX_VALUE) {
-    continue;
-}
+                    if (pathCost == Double.MAX_VALUE) {
+                        continue;
+                    }
 
-if (returnToSourceChest != null) {
-    pathCost += Math.abs(pos.getY() - returnToSourceChest.getY()) * 200;
-}
+                    if (returnToSourceChest != null) {
+                        pathCost += Math.abs(pos.getY() - returnToSourceChest.getY()) * 200;
+                    }
 
-if (pathCost < bestDist) {
-    bestDist = pathCost;
-    best = pos;
-}
+                    if (pathCost < bestDist) {
+                        bestDist = pathCost;
+                        best = pos;
+                    }
                 }
             }
         }
@@ -883,11 +887,11 @@ if (pathCost < bestDist) {
     }
 
     private ItemStack insertIntoChest(
-        ServerLevel level,
-        BlockPos chestPos,
-        Container chest,
-        ItemStack held
-) {
+            ServerLevel level,
+            BlockPos chestPos,
+            Container chest,
+            ItemStack held
+    ) {
 
         ItemStack remaining = held.copy();
 
@@ -971,30 +975,30 @@ if (pathCost < bestDist) {
     }
 
     private Container getActualContainer(
-        ServerLevel level,
-        BlockPos pos,
-        ChestBlockEntity chest
-) {
+            ServerLevel level,
+            BlockPos pos,
+            ChestBlockEntity chest
+    ) {
 
-    Container targetContainer = chest;
+        Container targetContainer = chest;
 
-    if (level.getBlockState(pos).getBlock() instanceof ChestBlock chestBlock) {
+        if (level.getBlockState(pos).getBlock() instanceof ChestBlock chestBlock) {
 
-        Container combined = ChestBlock.getContainer(
-                chestBlock,
-                level.getBlockState(pos),
-                level,
-                pos,
-                true
-        );
+            Container combined = ChestBlock.getContainer(
+                    chestBlock,
+                    level.getBlockState(pos),
+                    level,
+                    pos,
+                    true
+            );
 
-        if (combined != null) {
-            targetContainer = combined;
+            if (combined != null) {
+                targetContainer = combined;
+            }
         }
-    }
 
-    return targetContainer;
-}
+        return targetContainer;
+    }
 
     private boolean hasSpaceFor(Container chest, ItemStack item) {
 
@@ -1031,39 +1035,55 @@ if (pathCost < bestDist) {
 
         for (ItemFrame frame : level.getEntitiesOfClass(ItemFrame.class, box)) {
 
-            BlockPos attachedPos =
-                    frame.blockPosition().relative(frame.getDirection().getOpposite());
+            BlockPos attachedPos
+                    = frame.blockPosition().relative(frame.getDirection().getOpposite());
 
             if (!attachedPos.equals(chestPos)) {
 
-    boolean matchesDoubleChest = false;
+                boolean matchesDoubleChest = false;
 
-    BlockState state = level.getBlockState(chestPos);
+                BlockState state = level.getBlockState(chestPos);
 
-    if (state.getBlock() instanceof ChestBlock) {
+                if (state.getBlock() instanceof ChestBlock) {
 
-        for (BlockPos nearby : new BlockPos[] {
-                chestPos.north(),
-                chestPos.south(),
-                chestPos.east(),
-                chestPos.west()
-        }) {
+                    Direction[] directions = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
 
-            BlockState nearbyState = level.getBlockState(nearby);
+                    for (Direction dir : directions) {
+                        BlockPos nearby = chestPos.relative(dir);
+                        BlockState nearbyState = level.getBlockState(nearby);
 
-            if (nearbyState.getBlock() == state.getBlock()
-                    && attachedPos.equals(nearby)) {
+                        if (nearbyState.getBlock() == state.getBlock()
+                                && attachedPos.equals(nearby)) {
 
-                matchesDoubleChest = true;
-                break;
+                            // Found adjacent chest with frame attached to it
+                            // For double chests on shared edges, only accept the frame if its 
+                            // attachment direction points TOWARD this chest (indicates this chest owns it)
+                            Direction frameAttachDir = frame.getDirection();
+                            Direction pointsTowardThis = dir.getOpposite();
+
+                            // Accept if frame is pointing toward this chest
+                            if (frameAttachDir.equals(pointsTowardThis)) {
+                                matchesDoubleChest = true;
+                                System.out.println("[SMART-GOLEM FRAME-ACCEPT] Frame points toward this chest: "
+                                        + " chestPos=" + chestPos
+                                        + " adjacentPos=" + nearby
+                                        + " frameDir=" + frameAttachDir);
+                                break;
+                            } else {
+                                System.out.println("[SMART-GOLEM FRAME-SKIP] Frame points away from this chest: "
+                                        + " chestPos=" + chestPos
+                                        + " adjacentPos=" + nearby
+                                        + " frameDir=" + frameAttachDir
+                                        + " pointsTowardThis=" + pointsTowardThis);
+                            }
+                        }
+                    }
+                }
+
+                if (!matchesDoubleChest) {
+                    continue;
+                }
             }
-        }
-    }
-
-    if (!matchesDoubleChest) {
-        continue;
-    }
-}
 
             if (!frame.getItem().isEmpty()) {
                 return frame.getItem();
@@ -1082,11 +1102,11 @@ if (pathCost < bestDist) {
         actionDone = false;
 
         if (returnToSourceChest != null) {
-    switchState(mob, TaskState.RETURN_TO_SOURCE, returnToSourceChest);
+            switchState(mob, TaskState.RETURN_TO_SOURCE, returnToSourceChest);
 
-    System.out.println("[SMART-GOLEM STOP-KEEP-RETURN] returning to=" + returnToSourceChest);
-    return;
-}
+            System.out.println("[SMART-GOLEM STOP-KEEP-RETURN] returning to=" + returnToSourceChest);
+            return;
+        }
 
         taskState = TaskState.IDLE;
         currentTarget = null;
