@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ChestRegistry {
@@ -28,27 +29,33 @@ public class ChestRegistry {
             return;
         }
 
-        ItemStack framedStack =
-                ItemFrameHelper.getFramedItem(
+        List<ItemStack> framedStacks =
+                ItemFrameHelper.getFramedItems(
                         level,
                         chestPos
                 );
 
-        if (framedStack.isEmpty()) {
+        if (framedStacks.isEmpty()) {
             return;
         }
 
-        Item item =
-                framedStack.getItem();
+        for (ItemStack framedStack : framedStacks) {
 
-        if (ITEM_CHESTS.containsKey(item)) {
-            return;
+            if (framedStack.isEmpty()) {
+                continue;
+            }
+
+            Item item = framedStack.getItem();
+
+            if (ITEM_CHESTS.containsKey(item)) {
+                continue;
+            }
+
+            ITEM_CHESTS.put(
+                    item,
+                    chestPos
+            );
         }
-
-        ITEM_CHESTS.put(
-                item,
-                chestPos
-        );
     }
 
     public static BlockPos findChestForItem(
