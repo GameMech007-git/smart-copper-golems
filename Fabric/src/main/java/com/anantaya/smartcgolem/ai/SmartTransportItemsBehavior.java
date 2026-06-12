@@ -791,20 +791,18 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
                 continue;
             }
 
-            ItemStack frameItem = getFramedItem(level, pos);
+            FrameFilterResult frameFilter = getFrameFilterResult(level, pos, held);
 
-            if (frameItem.isEmpty()) {
+            if (!frameFilter.hasFrame()) {
                 continue;
             }
 
-            boolean matches = ItemStack.isSameItemSameComponents(frameItem, held);
-
             System.out.println("[SMART-GOLEM MATCH-CHECK] chest=" + pos
-                    + " frameItem=" + frameItem
+                    + " matchedFrameItem=" + frameFilter.matchedFrameItem()
                     + " holding=" + held
-                    + " matches=" + matches);
+                    + " matches=" + frameFilter.matchesHeld());
 
-            if (!matches) {
+            if (!frameFilter.matchesHeld()) {
                 continue;
             }
 
@@ -838,7 +836,9 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
                 continue;
             }
 
-            if (!getFramedItem(level, pos).isEmpty()) {
+            FrameFilterResult frameFilter = getFrameFilterResult(level, pos, held);
+
+            if (frameFilter.hasFrame()) {
                 System.out.println("[SMART-GOLEM FALLBACK-SKIP] Chest is filtered: " + pos);
                 continue;
             }
@@ -879,9 +879,9 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
                 continue;
             }
 
-            ItemStack frameItem = getFramedItem(level, pos);
+            FrameFilterResult frameFilter = getFrameFilterResult(level, pos, held);
 
-            if (!frameItem.isEmpty() && !ItemStack.isSameItemSameComponents(frameItem, held)) {
+            if (frameFilter.hasFrame() && !frameFilter.matchesHeld()) {
                 continue;
             }
 
@@ -892,7 +892,7 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
             }
 
             System.out.println("[SMART-GOLEM LAST-RESORT-DEPOSIT] Depositing back into source chest=" + pos);
-            markDestinationSelection(!frameItem.isEmpty(), true);
+            markDestinationSelection(frameFilter.hasFrame(), true);
             return pos;
         }
 
@@ -1103,7 +1103,19 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
         return false;
     }
 
-    private ItemStack getFramedItem(ServerLevel level, BlockPos chestPos) {
+    private record FrameFilterResult(
+            boolean hasFrame,
+            boolean matchesHeld,
+            ItemStack matchedFrameItem
+    ) {
+    }
+
+    private FrameFilterResult getFrameFilterResult(
+            ServerLevel level,
+            BlockPos chestPos,
+            ItemStack held
+    ) {
+        boolean hasFrame = false;
 
         AABB box = new AABB(chestPos).inflate(1.0D);
 
@@ -1143,12 +1155,20 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
                 }
             }
 
-            if (!frame.getItem().isEmpty()) {
-                return frame.getItem();
+            ItemStack frameItem = frame.getItem();
+
+            if (frameItem.isEmpty()) {
+                continue;
+            }
+
+            hasFrame = true;
+
+            if (!held.isEmpty() && ItemStack.isSameItemSameComponents(frameItem, held)) {
+                return new FrameFilterResult(true, true, frameItem.copy());
             }
         }
 
-        return ItemStack.EMPTY;
+        return new FrameFilterResult(hasFrame, false, ItemStack.EMPTY);
     }
 
     @Override
@@ -1290,13 +1310,14 @@ public class SmartTransportItemsBehavior extends Behavior<PathfinderMob> {
             return false;
         }
 
-        ItemStack frameItem = getFramedItem(level, depositTarget);
+        FrameFilterResult frameFilter = getFrameFilterResult(level, depositTarget, heldBefore);
 
-        if (frameItem.isEmpty()
-                || !ItemStack.isSameItemSameComponents(frameItem, heldBefore)) {
+        if (!frameFilter.hasFrame() || !frameFilter.matchesHeld()) {
 
-            System.out.println("[SMART-GOLEM MAGIC-DEPOSIT-CANCEL] Frame no longer matches. chest="
-                    + depositTarget + " frameItem=" + frameItem + " held=" + heldBefore);
+            System.out.println("[SMART-GOLEM MAGIC-DEPOSIT-CANCEL] No matching frame anymore. chest="
+                    + depositTarget
+                    + " matchedFrameItem=" + frameFilter.matchedFrameItem()
+                    + " held=" + heldBefore);
 
             markDestinationSelection(false, true);
 
