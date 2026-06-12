@@ -1,4 +1,4 @@
-# Smart Copper Golems (NeoForge)
+# Smart Copper Golems
 
 Smart Copper Golems upgrades vanilla Copper Golems into intelligent item transporters for Minecraft.
 
@@ -38,14 +38,9 @@ The mod keeps the vanilla Copper Golem feel while making them actually useful fo
 * Prevents golems fighting over the same chest
 * Returns to source chest after transport
 
-## Requirements
-
-* Minecraft 1.21.6
-* NeoForge 26.1+
-
 ## Installation
 
-1. Install NeoForge
+1. Install NeoForge/Fabric
 2. Place the mod `.jar` into your `mods` folder
 3. Launch Minecraft
 
@@ -58,4 +53,4 @@ The mod keeps the vanilla Copper Golem feel while making them actually useful fo
 
 ## Credits
 
-Created by Anantaya
+Created by GameMech007
