@@ -16,18 +16,10 @@ public class SmartChestValidator {
             return false;
         }
 
-        ItemStack frameStack =
-        ItemFrameHelper
-                .getFramedItem(
-                        level,
-                        chestPos
-                );
-
-        if (frameStack.isEmpty()) {
-            return true;
-        }
-
-        return frameStack.getItem() ==
-        stack.getItem();
+        return ItemFrameHelper.hasMatchingFrame(
+                level,
+                chestPos,
+                stack
+        );
     }
 }
