@@ -7,11 +7,13 @@
 	"authors": [
 		"GameMech007!"
 	],
+
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://modrinth.com/mod/smart-copper-golems",
+		"sources": "https://github.com/gamemech007/smart-copper-golems",
+		"issues": "https://github.com/gamemech007/smart-copper-golems/issues"
 	},
-	"license": "CC0-1.0",
+	"license": "Apache-2.0",
 	"icon": "assets/smart-golem/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -31,7 +33,7 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.19.2",
-		"minecraft": ">=26.1 <26.2",
+		"minecraft": ">=26.1",
 		"java": ">=25",
 		"fabric-api": "*"
 	}
